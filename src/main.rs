@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
         log::info!("New transaction signature: {:?}", msg.value.signature);
         let accounts =
             poolberry::decode_transaction(&rpc_client, msg.value.signature.parse::<Signature>()?)?;
-        log::info!("{:#?}", accounts);
+        log::info!("All involved accounts: {:#?}", accounts);
 
         // This here should check if the address is a token account
         // If not then it should update the not_token list with a new value address which is not a

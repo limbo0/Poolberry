@@ -38,16 +38,21 @@ pub fn check_if_token(
     let token_extension_program =
         "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".parse::<Pubkey>()?;
 
-    let acc: Vec<Account> = accounts
-        .iter()
-        .filter_map(|x| {
-            rpc_client
-                .get_account_with_commitment(x, CommitmentConfig::processed())
-                .unwrap()
-                .value
+    let acc: Vec<String> = accounts
+        .into_iter()
+        .filter_map(|pubk| {
+            match rpc_client
+                .get_token_account_with_commitment(&pubk, CommitmentConfig::processed())
+                .ok()
+            {
+                Some(data) => Some(data.value.unwrap().mint),
+                _ => None,
+            }
         })
         .collect();
-    log::info!("value: {:?}", acc);
+
+    log::info!("Filtered: {:#?}", acc);
+
     Ok(())
 }
 

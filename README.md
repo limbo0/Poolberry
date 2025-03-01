@@ -15,6 +15,7 @@
 
 
 ## Documentation
+- Receiving (14,15) seconds delayed information from chainstack websocket.
 - Subscribe to log_subscribe 
 - Gather all the accounts which are involved in the transaction.
 - Filter the addresses which are obviously not token addresses
