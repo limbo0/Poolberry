@@ -1,12 +1,17 @@
 pub mod volumeprofile;
 
 use anyhow::Result;
+use solana_account_decoder_client_types::token::UiTokenAmount;
 use solana_client::{rpc_client::RpcClient, rpc_config::RpcTransactionConfig};
 use solana_commitment_config::CommitmentConfig;
 use solana_sdk::{account::Account, pubkey::Pubkey, signature::Signature};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 type myclient = std::sync::Arc<RpcClient>;
+type myresponse = solana_client::rpc_response::Response<Option<UiTokenAmount>>;
+// let token_program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".parse::<Pubkey>()?;
+// let token_extension_program =
+//     "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".parse::<Pubkey>()?;
 
 // This will return all the accounts which was involved in the execution of the signature.
 pub fn decode_transaction(rpc_client: &myclient, signature: Signature) -> Result<Vec<Pubkey>> {
@@ -28,16 +33,12 @@ pub fn decode_transaction(rpc_client: &myclient, signature: Signature) -> Result
 }
 
 // This should receive a list of new Pubkey and a list of predefined tokens which are not tokens
-// filter and output only the ones which are tokens,
+// Add pkeys which are not tokens to the not token list.
 pub fn check_if_token(
     rpc_client: &myclient,
     accounts: Vec<Pubkey>,
     not_token: &Arc<NotToken>,
 ) -> Result<()> {
-    let token_program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".parse::<Pubkey>()?;
-    let token_extension_program =
-        "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".parse::<Pubkey>()?;
-
     let acc: Vec<String> = accounts
         .into_iter()
         .filter_map(|pubk| {
@@ -46,7 +47,11 @@ pub fn check_if_token(
                 .ok()
             {
                 Some(data) => Some(data.value.unwrap().mint),
-                _ => None,
+                _ => {
+                    let mut nt = not_token.data.write().unwrap();
+                    nt.push(pubk);
+                    None
+                }
             }
         })
         .collect();
@@ -56,12 +61,15 @@ pub fn check_if_token(
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct NotToken {
-    data: Vec<Pubkey>,
+    data: RwLock<Vec<Pubkey>>,
 }
 
 impl NotToken {
     pub fn new() -> Self {
-        Self { data: Vec::new() }
+        Self {
+            data: RwLock::new(Vec::new()),
+        }
     }
 }

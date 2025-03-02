@@ -15,7 +15,7 @@ use std::{io::Write, sync::Arc};
 #[tokio::main]
 async fn main() -> Result<()> {
     // Global buffer blacklisted tokens.
-    let mut not_token = Arc::new(NotToken::new());
+    let not_token = Arc::new(NotToken::new());
 
     // Connection configs
     let wss_url = "wss://solana-mainnet.core.chainstack.com/bea89a67f455d5890d5ce22c61148ac6";
@@ -63,6 +63,7 @@ async fn main() -> Result<()> {
         // token.
         //
         check_if_token(&rpc_client, accounts, &not_token)?;
+        log::info!("NotToken: {:#?}", not_token);
     }
 
     Ok(())

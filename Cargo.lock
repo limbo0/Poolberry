@@ -2289,6 +2289,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "solana-account-decoder-client-types",
  "solana-client",
  "solana-commitment-config",
  "solana-sdk",
