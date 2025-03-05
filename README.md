@@ -1,4 +1,4 @@
-## Searching triangular arb with multi-threading.
+## Searching triangular arb leveraging multi-threading.
 
 
 - Use only `N` highest volume assets.
@@ -15,15 +15,18 @@
 
 
 ## Documentation
-- Receiving (14,15) seconds delayed information from chainstack websocket.
 - Subscribe to log_subscribe 
+- Receiving (14,15) seconds delayed information from chainstack websocket.
+- Helius websocket provide finalized commitment for log_subscribe.
+    - Changed the websocket commitment to confirmed (few seconds delay).
 - Gather all the accounts which are involved in the transaction.
 - Filter the addresses which are obviously not token addresses
     - Create a list of pre-defined such addresses
     - While the token addresses are checked, if the address is not an token account, add it to the list of addresses.
     - 
-
+- chainstack websocket does not provide finalized commitment for log_subscribe.
 
 
 ## Thoughts  
-- Can i check the account type directly, for example for the passed address if it is a token account or not token account.
+- Lol
+- Why receiving transaction after 4 or 5 minutes.
