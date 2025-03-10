@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     // Global buffer blacklisted tokens.
     let not_token_hset = Arc::new(NotToken::new());
     let mint_acc_bmap = Arc::new(MintAccounts::new());
-    let rpc_client = Arc::new(RpcClient::new(
+    let http_client = Arc::new(RpcClient::new(
         env::var("chainstack_https").expect("chainstack_https env not found!"),
     ));
     // ************************************************************************************************************
@@ -44,46 +44,65 @@ async fn main() -> Result<()> {
 
     // ************************************************************************************************************
     // Config filters for data subscribing.
-    let logs_filter = RpcTransactionLogsFilter::Mentions(vec![
-        "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C".to_string(),
-    ]);
+    let logs_filter = unsafe {
+        RpcTransactionLogsFilter::Mentions(vec![
+            "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C".to_string(),
+        ])
+    };
+
     let websocket_sub_config = RpcTransactionLogsConfig {
         commitment: Some(solana_commitment_config::CommitmentConfig::confirmed()),
     };
 
-    // Set up subscription
-    println!("subscription set");
     let wss = PubsubClient::new(&env::var("helius_websocket")?).await?;
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(100);
 
-    let (mut a, _b) = wss
-        .logs_subscribe(logs_filter, websocket_sub_config)
-        .await
-        .unwrap();
-
-    println!("Prosessing stream");
-    while let Some(msg) = a.next().await {
-        println!("------------------------------------------------------------");
-        // Remove this log at one point in time: Optimization.
-        log::info!("New transaction signature: {:?}", msg.value.signature);
-
-        if let Some(tx_involved_pubkeys) = poolberry::common::decode_transaction(
-            &rpc_client,
-            msg.value.signature.parse::<Signature>().unwrap(),
-        )
-        .unwrap()
-        {
-            log::info!("Checking {:?} involved accounts!", tx_involved_pubkeys);
-            // ******************************************************************************************
-            check_if_token(
-                &rpc_client,
-                tx_involved_pubkeys,
-                &not_token_hset,
-                &mint_acc_bmap,
-            )
+    let mut set = JoinSet::new();
+    let http_client1 = Arc::clone(&http_client);
+    let sub_handle = set.spawn(async move {
+        // Set up subscription
+        println!("subscribing!");
+        let (mut a, _b) = wss
+            .logs_subscribe(logs_filter, websocket_sub_config)
+            .await
             .unwrap();
-        }
-        log::info!("{:?}", mint_acc_bmap.sort_descending()?)
-    }
 
+        while let Some(msg) = a.next().await {
+            println!("------------------------------------------------------------");
+            // Remove this log at one point in time: Optimization.
+            log::info!("New transaction signature: {:?}", msg.value.signature);
+
+            // The unwrap of this data is necessary to avoid sending None data.
+            // This will ensure the channel will always send a valid wrapped data.
+            if let Some(data) = poolberry::common::decode_transaction(
+                &http_client1,
+                msg.value.signature.parse::<Signature>().unwrap(),
+            )
+            .unwrap()
+            {
+                sender
+                    .send(Some(data))
+                    .await
+                    .expect("Failed to send tx_involved_pubkeys via channel!");
+            }
+        }
+    });
+
+    let http_client2 = Arc::clone(&http_client);
+    let rec_handle = set.spawn(async move {
+        while let Some(data) = receiver.recv().await.unwrap() {
+            log::info!("Checking {:?} involved accounts!", data);
+            check_if_token(&http_client2, data, &not_token_hset, &mint_acc_bmap)
+                .await
+                .unwrap();
+            log::info!("{:?}", mint_acc_bmap.sort_descending().unwrap())
+        }
+        // ******************************************************************************************
+    });
+
+    // sub_handle.await.unwrap();
+    // rec_handle.await.unwrap();
+
+    set.join_all().await;
     Ok(())
 }

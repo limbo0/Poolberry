@@ -48,7 +48,7 @@ pub fn decode_transaction(
 // ********************************************************************************************
 // This should receive a list of new Pubkey and a list of predefined tokens which are not tokens
 // Add pkeys which are not tokens to the not token list.
-pub fn check_if_token(
+pub async fn check_if_token(
     rpc_client: &Myclient,
     tx_involved_pubkeys: Vec<Pubkey>,
     not_token_hset: &Arc<NotToken>,
