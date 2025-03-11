@@ -46,93 +46,33 @@ async fn main() -> Result<()> {
     // Config filters for data subscribing.
 
     let (sender, mut receiver) = tokio::sync::mpsc::channel(100);
-
     let mut set = JoinSet::new();
-    let http_client1 = Arc::clone(&http_client);
     let sender = Arc::new(sender);
+
+    // ************************************************************************************************************
+    let http_client1 = Arc::clone(&http_client);
     let sender1 = Arc::clone(&sender);
-
     set.spawn(async move {
-        // Set up subscription
-
-        let wss = PubsubClient::new(&env::var("helius_websocket").unwrap())
-            .await
-            .unwrap();
-        println!("subscribing!");
-        let (mut a, _b) = wss
-            .logs_subscribe(
-                RpcTransactionLogsFilter::Mentions(vec![String::from(
-                    "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
-                )]),
-                RpcTransactionLogsConfig {
-                    commitment: Some(solana_commitment_config::CommitmentConfig::confirmed()),
-                },
-            )
-            .await
-            .unwrap();
-
-        while let Some(msg) = a.next().await {
-            println!("------------------------------------------------------------");
-            // Remove this log at one point in time: Optimization.
-            log::info!("CPMM new transaction signature: {:?}", msg.value.signature);
-
-            // The unwrap of this data is necessary to avoid sending None data.
-            // This will ensure the channel will always send a valid wrapped data.
-            if let Some(data) = poolberry::common::decode_transaction(
-                &http_client1,
-                msg.value.signature.parse::<Signature>().unwrap(),
-            )
-            .unwrap()
-            {
-                log::info!("Sending data form task: {:?}", tokio::task::id());
-                sender1
-                    .send(Some(data))
-                    .await
-                    .expect("Failed to send tx_involved_pubkeys via channel!");
-            }
-        }
+        poolberry::oppertunity_layer::identify::magic(
+            http_client1,
+            String::from("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"),
+            sender1,
+        )
+        .await;
     });
 
+    // ************************************************************************************************************
     let http_client2 = Arc::clone(&http_client);
     set.spawn(async move {
-        let wss = PubsubClient::new(&env::var("helius_websocket").unwrap())
-            .await
-            .unwrap();
-
-        let (mut a, _b) = wss
-            .logs_subscribe(
-                RpcTransactionLogsFilter::Mentions(vec![
-                    (String::from("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK")),
-                ]),
-                RpcTransactionLogsConfig {
-                    commitment: Some(solana_commitment_config::CommitmentConfig::confirmed()),
-                },
-            )
-            .await
-            .unwrap();
-
-        while let Some(msg) = a.next().await {
-            println!("------------------------------------------------------------");
-            // Remove this log at one point in time: Optimization.
-            log::info!("CAMM new transaction signature: {:?}", msg.value.signature);
-
-            // The unwrap of this data is necessary to avoid sending None data.
-            // This will ensure the channel will always send a valid wrapped data.
-            if let Some(data) = poolberry::common::decode_transaction(
-                &http_client2,
-                msg.value.signature.parse::<Signature>().unwrap(),
-            )
-            .unwrap()
-            {
-                log::info!("Sending data form task: {:?}", tokio::task::id());
-                sender
-                    .send(Some(data))
-                    .await
-                    .expect("Failed to send tx_involved_pubkeys via channel!");
-            }
-        }
+        poolberry::oppertunity_layer::identify::magic(
+            http_client2,
+            String::from("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"),
+            Arc::clone(&sender),
+        )
+        .await;
     });
 
+    // ************************************************************************************************************
     let http_client3 = Arc::clone(&http_client);
     set.spawn(async move {
         while let Some(data) = receiver.recv().await.unwrap() {
