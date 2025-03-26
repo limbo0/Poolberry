@@ -1,17 +1,10 @@
 use anyhow::Result;
 use dotenv::dotenv;
-use futures_util::{StreamExt, stream::Next};
 use log::LevelFilter;
-use poolberry::common::{MintAccounts, NotToken, SolanaConnectionPool, check_if_token};
-use solana_client::{
-    nonblocking::pubsub_client::PubsubClient,
-    rpc_client::RpcClient,
-    rpc_config::{RpcTransactionConfig, RpcTransactionLogsConfig, RpcTransactionLogsFilter},
-};
-use solana_sdk::{pubkey::Pubkey, signature::Signature, transaction::VersionedTransaction};
-use solana_transaction_status_client_types::EncodedTransaction;
-use std::{env, io::Write, sync::Arc, time::Duration};
-use tokio::{task::JoinSet, time};
+use poolberry::common::{MintAccounts, NotToken, check_if_token};
+use solana_client::rpc_client::RpcClient;
+use std::{env, io::Write, sync::Arc};
+use tokio::task::JoinSet;
 
 #[tokio::main]
 async fn main() -> Result<()> {
